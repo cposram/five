@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>專業五子棋對戰 - 捷運咖啡風</title>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-bundle.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-bundle.js"></script>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #f4f1ea; }
+        #menu { margin: 20px; padding: 20px; border: 2px solid #6f4e37; border-radius: 10px; background: white; }
+        #board { display: grid; grid-template-columns: repeat(15, 30px); grid-template-rows: repeat(15, 30px); background: #e3c16f; border: 2px solid #8b4513; cursor: pointer; position: relative; }
+        .cell { width: 30px; height: 30px; border: 0.5px solid #8b4513; box-sizing: border-box; display: flex; justify-content: center; align-items: center; }
+        .black { width: 24px; height: 24px; background: black; border-radius: 50%; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); }
+        .white { width: 24px; height: 24px; background: white; border-radius: 50%; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); }
+        #leaderboard { position: absolute; right: 20px; top: 20px; background: rgba(111, 78, 55, 0.1); padding: 10px; border-radius: 5px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; background: #6f4e37; color: white; border: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+<div id="leaderboard">
+    <h3>🏆 前三名排行榜</h3>
+    <ol id="rank-list"><li>載入中...</li></ol>
+</div>
+
+<div id="menu">
+    <h2>選擇 NPC 難度進入遊戲</h2>
+    <button onclick="startGame('easy')">初級 (隨機)</button>
+    <button onclick="startGame('medium')">中級 (防守型)</button>
+    <button onclick="startGame('hard')">高級 (進攻型)</button>
+</div>
+
+<div id="game-info" style="display:none;">
+    <p>目前步數: <span id="step-count">0</span> | 難度: <span id="current-lv"></span></p>
+    <div id="board"></div>
+</div>
+
+<script>
+// --- Firebase 設定 (請填入您原本的 API Key) ---
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    databaseURL: "YOUR_DATABASE_URL",
+    projectId: "YOUR_PROJECT_ID"
+};
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let board = [];
+let steps = 0;
+let difficulty = 'easy';
+let gameOver = false;
+
+// 初始化棋盤
+function createBoard() {
+    const boardEl = document.getElementById('board');
+    boardEl.innerHTML = '';
+    board = Array(15).fill().map(() => Array(15).fill(0));
+    for (let r = 0; r < 15; r++) {
+        for (let c = 0; c < 15; c++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.onclick = () => playerMove(r, c);
+            boardEl.appendChild(cell);
+        }
+    }
+}
+
+function startGame(lv) {
+    difficulty = lv;
+    steps = 0;
+    gameOver = false;
+    document.getElementById('menu').style.display = 'none';
+    document.getElementById('game-info').style.display = 'block';
+    document.getElementById('current-lv').innerText = lv.toUpperCase();
+    document.getElementById('step-count').innerText = "0";
+    createBoard();
+    updateLeaderboard();
+}
+
+function playerMove(r, c) {
+    if (board[r][c] !== 0 || gameOver) return;
+    makeMove(r, c, 1); // 1 為玩家(黑)
+    steps++;
+    document.getElementById('step-count').innerText = steps;
+    
+    if (checkWin(r, c, 1)) {
+        alert("恭喜勝利！總步數：" + steps);
+        saveScore(steps);
+        gameOver = true;
+        return;
+    }
+    
+    setTimeout(npcMove, 500);
+}
+
+function npcMove() {
+    if (gameOver) return;
+    let r, c;
+    if (difficulty === 'easy') {
+        do { r = Math.floor(Math.random()*15); c = Math.floor(Math.random()*15); } while (board[r][c] !== 0);
+    } else {
+        // 中高級簡化邏輯：優先阻擋玩家連四，否則隨機
+        const best = findBestMove();
+        r = best.r; c = best.c;
+    }
+    
+    makeMove(r, c, 2); // 2 為 NPC(白)
+    if (checkWin(r, c, 2)) {
+        alert("NPC 獲勝！再接再厲。");
+        gameOver = true;
+    }
+}
+
+function makeMove(r, c, p) {
+    board[r][c] = p;
+    const index = r * 15 + c;
+    const cell = document.getElementsByClassName('cell')[index];
+    const piece = document.createElement('div');
+    piece.className = p === 1 ? 'black' : 'white';
+    cell.appendChild(piece);
+}
+
+function checkWin(r, c, p) {
+    const directions = [[1,0],[0,1],[1,1],[1,-1]];
+    for (let [dr, dc] of directions) {
+        let count = 1;
+        for (let i=1; i<5; i++) {
+            if (board[r+dr*i]?.[c+dc*i] === p) count++; else break;
+        }
+        for (let i=1; i<5; i++) {
+            if (board[r-dr*i]?.[c-dc*i] === p) count++; else break;
+        }
+        if (count >= 5) return true;
+    }
+    return false;
+}
+
+// 簡易 AI 搜尋 (中/高級通用邏輯)
+function findBestMove() {
+    // 優先擋掉玩家即將勝利的點
+    for (let r=0; r<15; r++) {
+        for (let c=0; c<15; c++) {
+            if (board[r][c] === 0) {
+                if (checkWin(r, c, 1)) return {r, c};
+            }
+        }
+    }
+    // 否則找中間區域隨機落子
+    let r, c;
+    do { r = Math.floor(Math.random()*15); c = Math.floor(Math.random()*15); } while (board[r][c] !== 0);
+    return {r, c};
+}
+
+function saveScore(s) {
+    const name = prompt("進入前三名！請留名:") || "神秘高手";
+    db.ref('gomoku_leaderboard').push({ name, steps: s, date: Date.now() });
+}
+
+function updateLeaderboard() {
+    db.ref('gomoku_leaderboard').orderByChild('steps').limitToFirst(3).on('value', (snapshot) => {
+        const listEl = document.getElementById('rank-list');
+        listEl.innerHTML = '';
+        snapshot.forEach((child) => {
+            const data = child.val();
+            listEl.innerHTML += `<li>${data.name}: ${data.steps} 步</li>`;
+        });
+    });
+}
+</script>
+</body>
+</html>
+
