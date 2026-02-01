@@ -13,42 +13,39 @@
         /* 🏆 極致扁平排行榜區域 */
         #leaderboard-zone {
             position: absolute; top: 5px; left: 5px; right: 5px; 
-            display: flex; flex-direction: column; gap: 5px; z-index: 110;
+            display: flex; flex-direction: column; gap: 4px; z-index: 110;
         }
 
-        /* 第一列：初級(左) + 中級(右) 橫向排列 */
-        .row-one { display: flex; gap: 5px; }
+        /* 第一列：初級(左) + 中級(右) */
+        .row-one { display: flex; gap: 4px; }
         
         /* 第二列：大師級 (橫跨全寬) */
         .row-two { width: 100%; }
 
         .rank-box {
             background: rgba(0,0,0,0.85); color: white; border-radius: 8px;
-            padding: 5px; border: 1px solid var(--gold); box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            padding: 4px; border: 1px solid var(--gold); box-shadow: 0 2px 8px rgba(0,0,0,0.4);
             text-align: center; flex: 1;
         }
-        .rank-box b { font-size: 10px; display: block; margin-bottom: 3px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 2px; }
+        .rank-box b { font-size: 10px; display: block; margin-bottom: 2px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 2px; }
         
-        /* 🚀 核心修改：上排人名、下排步數的橫向列表 */
-        .rank-list-flex { 
-            display: flex; justify-content: space-around; gap: 2px; min-height: 25px;
-        }
+        /* 🚀 佈局優化：上排人名、下排步數 */
+        .rank-list-flex { display: flex; justify-content: space-around; gap: 2px; min-height: 22px; }
+        .master-grid-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; min-height: 45px; }
 
         .rank-unit { 
             flex: 1; display: flex; flex-direction: column; align-items: center; 
-            font-size: 9px; line-height: 1.2; border-right: 0.5px solid rgba(255,255,255,0.1);
+            font-size: 9px; line-height: 1.1; border-right: 0.5px solid rgba(255,255,255,0.1);
         }
         .rank-unit:last-child { border-right: none; }
         
-        .rank-unit .name { color: #ccc; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .rank-unit .steps { color: var(--gold); font-weight: bold; font-size: 11px; }
+        .rank-unit .name { color: #ccc; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: normal; }
+        .rank-unit .steps { color: var(--gold); font-weight: bold; font-size: 10px; }
 
-        /* 大師級專用：Top 6 兩排橫向 */
         .master-grid-box { border-color: var(--red) !important; }
         .master-grid-box b { color: var(--red); }
-        .master-flex { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; min-height: 50px; }
 
-        /* 調整遊戲區域，防止擋到棋盤 */
+        /* 遊戲啟動選單與棋盤容器 */
         #setup-menu { margin-top: 155px; text-align: center; background: white; padding: 25px; border-radius: 20px; width: 85%; max-width: 300px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); z-index: 100; }
         #game-container { position: relative; margin-top: 150px; z-index: 10; display: none; text-align: center; }
         canvas#victoryCanvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 100; }
@@ -74,19 +71,17 @@
     <div class="row-one">
         <div class="rank-box">
             <b>🍃 初級 Top 3</b>
-            <div id="rank-easy" class="rank-list-flex">等待挑戰...</div>
+            <div id="rank-easy" class="rank-list-flex">載入中...</div>
         </div>
         <div class="rank-box">
             <b>🛡️ 中級 Top 3</b>
-            <div id="rank-medium" class="rank-list-flex">等待挑戰...</div>
+            <div id="rank-medium" class="rank-list-flex">載入中...</div>
         </div>
     </div>
     <div class="row-two">
         <div class="rank-box master-grid-box">
             <b>🔥 大師殿堂 Top 6</b>
-            <div id="rank-hard" class="master-flex">
-                載入中...
-            </div>
+            <div id="rank-hard" class="master-grid-list">載入中...</div>
         </div>
     </div>
 </div>
@@ -106,27 +101,41 @@
 </div>
 
 <script>
-// --- [1] Firebase 配置 (請保持 API Key 不變) ---
+// --- [1] Firebase 初始化 (加上強大保護) ---
 const firebaseConfig = {
   apiKey: "AIzaSyBQr_3o913vgaWUg4PAuequLEVE1mZFS7M",
   databaseURL: "https://cowgame-48dd8-default-rtdb.firebaseio.com",
   projectId: "cowgame-48dd8"
 };
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+
+let db = null;
+try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+} catch (err) { console.warn("Firebase 連線受阻，改為離線模式。"); }
 
 const paths = { easy: 'rank_v4_easy', medium: 'rank_v4_medium', hard: 'rank_v4_hard' };
 const topScores = { easy: [], medium: [], hard: [] };
 
-// --- [2] 修正版監聽邏輯 (增加 snap.exists 判斷，避免卡死) ---
+// --- [2] 監聽邏輯 (增加逾時處理，避免畫面卡死) ---
 function listenRank(lv) {
+    if (!db) { document.getElementById(`rank-${lv}`).innerHTML = "離線模式"; return; }
     const limit = (lv === 'hard') ? 6 : 3;
+    
+    // 設定一個逾時 fallback
+    const timer = setTimeout(() => {
+        if (document.getElementById(`rank-${lv}`).innerText === "載入中...") {
+            document.getElementById(`rank-${lv}`).innerHTML = "連線逾時";
+        }
+    }, 5000);
+
     db.ref(paths[lv]).orderByChild('steps').limitToFirst(limit).on('value', snap => {
+        clearTimeout(timer);
         const listEl = document.getElementById(`rank-${lv}`);
         topScores[lv] = [];
         let html = "";
         
-        if (snap.exists() && snap.val() !== null) {
+        if (snap.exists()) {
             snap.forEach(c => {
                 const d = c.val();
                 topScores[lv].push(d);
@@ -134,21 +143,21 @@ function listenRank(lv) {
             });
             listEl.innerHTML = html;
         } else {
-            listEl.innerHTML = "<span style='color:#777; font-size:9px;'>等待紀錄...</span>";
+            listEl.innerHTML = "等待紀錄";
         }
     }, (error) => {
-        console.error("Firebase Error:", error);
-        document.getElementById(`rank-${lv}`).innerHTML = "<span style='color:red; font-size:9px;'>連線錯誤</span>";
+        document.getElementById(`rank-${lv}`).innerHTML = "權限受限";
     });
 }
 ['easy', 'medium', 'hard'].forEach(listenRank);
 
-// --- [3] 遊戲核心邏輯 ---
+// --- [3] 核心遊戲邏輯 (獨立於 Firebase 之外，保證可點擊) ---
 let board = [], steps = 0, isGameOver = false, difficulty = 'easy', frameCount = 0;
 const canvas = document.getElementById('victoryCanvas'), ctx = canvas.getContext('2d');
 const diffLabels = { easy: '初級', medium: '中級', hard: '大師級' };
 
 function startGomoku(lv) {
+    console.log("Start button clicked: ", lv);
     difficulty = lv;
     document.getElementById('setup-menu').style.display = 'none';
     document.getElementById('game-container').style.display = 'block';
@@ -169,6 +178,9 @@ function initBoard() {
             el.appendChild(div);
         }
     }
+    // 確保 Canvas 大小正確
+    canvas.width = el.offsetWidth;
+    canvas.height = el.offsetHeight;
 }
 
 function playerMove(r, c) {
@@ -188,10 +200,10 @@ function npcMove() {
 
 function placePiece(r, c, p) {
     board[r][c] = p;
-    const cell = document.getElementsByClassName('cell')[r * 15 + c];
+    const cells = document.getElementsByClassName('cell');
     const div = document.createElement('div');
     div.className = `piece ${p === 1 ? 'black' : 'white'}`;
-    cell.appendChild(div);
+    cells[r * 15 + c].appendChild(div);
 }
 
 function checkWin(r, c, p) {
@@ -250,15 +262,15 @@ function endGame(win) {
         const limit = (difficulty === 'hard') ? 6 : 3;
         const myList = topScores[difficulty];
         const isTop = myList.length < limit || steps < myList[myList.length - 1].steps;
-        if (isTop) {
+        if (isTop && db) {
             setTimeout(() => {
                 const name = prompt(`🏆 破紀錄！在[${diffLabels[difficulty]}]僅用 ${steps} 步！\n請留名：`) || "高手";
                 db.ref(paths[difficulty]).push({ name, steps, time: Date.now() });
             }, 600);
         } else {
-            alert(`勝利！用了 ${steps} 步。可惜未擠進前 ${limit} 名！`);
+            alert(`勝利！用了 ${steps} 步。`);
         }
-    } else alert("NPC 獲勝！多吃點小番茄補充營養，下次再來。");
+    } else alert("NPC 獲勝！喝口熱茶潤潤環甲肌，下次再來。");
 }
 
 function animationLoop() {
@@ -266,7 +278,7 @@ function animationLoop() {
     if (isGameOver) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         for(let i=0; i<15; i++) {
-            ctx.fillStyle = i%2===0?'gold':'#FFF';
+            ctx.fillStyle = i%2===0?'#FFD700':'#FFF';
             ctx.beginPath();
             let x = (frameCount*5 + i*100)%canvas.width, y = (frameCount*3 + i*90)%canvas.height;
             ctx.arc(x, y, 3, 0, Math.PI*2); ctx.fill();
