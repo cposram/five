@@ -10,35 +10,42 @@
         :root { --coffee: #6f4e37; --wood: #e3c16f; --grass: #87CEEB; --gold: #FFD700; }
         body { margin: 0; background: var(--grass); font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; display: flex; flex-direction: column; align-items: center; touch-action: none; }
         
-        /* 畫布與棋盤重疊設定 */
-        #game-container { position: relative; margin-top: 60px; z-index: 10; }
-        canvas#victoryCanvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 100; }
-        
+        /* 右上角排行榜 */
         #ui-leaderboard {
             position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.6);
-            color: white; padding: 12px; border-radius: 12px; font-size: 14px; z-index: 110;
-            min-width: 160px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: 1px solid var(--gold);
+            color: white; padding: 12px; border-radius: 12px; font-size: 13px; z-index: 110;
+            min-width: 170px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: 1px solid var(--gold);
         }
         .rank-item { margin: 5px 0; display: block; border-bottom: 0.5px solid rgba(255,255,255,0.2); padding-bottom: 2px; }
+        .rank-item small { color: #ccc; margin-left: 4px; }
         .gold { color: var(--gold); font-weight: bold; }
 
-        #setup-menu { margin-top: 120px; text-align: center; background: white; padding: 40px; border-radius: 25px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); z-index: 120; }
+        /* 遊戲選單 */
+        #setup-menu { margin-top: 100px; text-align: center; background: white; padding: 40px; border-radius: 25px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); z-index: 120; width: 80%; max-width: 320px; }
+        
+        /* 棋盤容器 */
+        #game-container { position: relative; margin-top: 60px; z-index: 10; display: none; text-align: center; }
+        canvas#victoryCanvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 100; }
+        
         #board { 
-            display: grid; grid-template-columns: repeat(15, 24px); grid-template-rows: repeat(15, 24px); 
+            display: grid; grid-template-columns: repeat(15, 22px); grid-template-rows: repeat(15, 22px); 
             background: var(--wood); border: 5px solid #8b4513; border-radius: 5px; cursor: pointer;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4); margin: 0 auto;
         }
         @media (min-width: 600px) { #board { grid-template-columns: repeat(15, 38px); grid-template-rows: repeat(15, 38px); } }
         
+        /* 棋子樣式 */
         .cell { border: 0.5px solid rgba(139, 69, 19, 0.4); display: flex; justify-content: center; align-items: center; }
-        .piece { width: 88%; height: 88%; border-radius: 50%; animation: drop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .piece { width: 90%; height: 90%; border-radius: 50%; animation: drop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .black { background: radial-gradient(circle at 35% 35%, #555, #000); box-shadow: 2px 2px 5px rgba(0,0,0,0.6); }
         .white { background: radial-gradient(circle at 35% 35%, #fff, #bbb); box-shadow: 2px 2px 5px rgba(0,0,0,0.3); }
         
         @keyframes drop { from { transform: translateY(-20px) scale(1.2); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
-        .btn { background: var(--coffee); color: white; border: none; padding: 15px 35px; margin: 10px; border-radius: 50px; font-weight: bold; cursor: pointer; font-size: 18px; box-shadow: 0 4px 0 #4e3626; }
+
+        /* 按鈕樣式 */
+        .btn { background: var(--coffee); color: white; border: none; padding: 12px 30px; margin: 8px; border-radius: 50px; font-weight: bold; cursor: pointer; font-size: 18px; box-shadow: 0 4px 0 #4e3626; width: 100%; box-sizing: border-box; }
         .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #4e3626; }
-        .stats { font-size: 20px; color: white; text-shadow: 2px 2px 4px #000; margin-bottom: 15px; font-weight: bold; }
+        .stats { font-size: 18px; color: white; text-shadow: 2px 2px 4px #000; margin-bottom: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -49,58 +56,73 @@
 </div>
 
 <div id="setup-menu">
-    <h1 style="color:var(--coffee); margin-top:0;">岡聯五子棋 <small style="font-size:12px; display:block">大師賽旗艦版</small></h1>
-    <button class="btn" onclick="startGomoku('easy')">初級</button><br>
-    <button class="btn" onclick="startGomoku('medium')">中級</button><br>
+    <h1 style="color:var(--coffee); margin-top:0; font-size: 26px;">岡聯五子棋</h1>
+    <p style="color:#666; margin-bottom:20px;">請選擇對手難度</p>
+    <button class="btn" onclick="startGomoku('easy')">初級</button>
+    <button class="btn" onclick="startGomoku('medium')">中級</button>
     <button class="btn" onclick="startGomoku('hard')" style="background:#d32f2f; box-shadow:0 4px 0 #8e2020">大師級 NPC</button>
 </div>
 
-<div id="game-container" style="display:none">
-    <div class="stats">Lv: <span id="display-lv">-</span> | Steps: <span id="step-count">0</span></div>
+<div id="game-container">
+    <div class="stats">難度: <span id="display-lv">-</span> | 步數: <span id="step-count">0</span></div>
     <div id="board"></div>
     <canvas id="victoryCanvas"></canvas>
-    <button class="btn" onclick="location.reload()" style="background:#666; box-shadow:0 4px 0 #444; margin-top:20px">回選單</button>
+    <button class="btn" onclick="location.reload()" style="background:#666; box-shadow:0 4px 0 #444; margin-top:25px; width:150px;">回選單</button>
 </div>
 
 <script>
-// --- Firebase 配置 (沿用抓牛程式 API) ---
+// =========================================================================
+// 🔧 Firebase 整合區 (已對齊您的抓牛程式資料庫)
+// =========================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyBQr_3o913vgaWUg4PAuequLEVE1mZFS7M",
+  authDomain: "cowgame-48dd8.firebaseapp.com",
   databaseURL: "https://cowgame-48dd8-default-rtdb.firebaseio.com",
   projectId: "cowgame-48dd8"
 };
+
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const rankRef = db.ref('gomoku_master_ranking');
 
+// 難度標籤對應表
+const diffLabels = { 'easy': '初級', 'medium': '中級', 'hard': '大師級' };
+
+// =========================================================================
+// 🎮 遊戲狀態變數
+// =========================================================================
 let board = [], steps = 0, isGameOver = false, difficulty = 'easy', frameCount = 0;
 const canvas = document.getElementById('victoryCanvas');
 const ctx = canvas.getContext('2d');
 
-// 排行榜邏輯：步數愈少愈前面
+// 實時讀取排行榜 (整合括號顯示功能)
 rankRef.orderByChild('steps').limitToFirst(3).on('value', snap => {
     const list = [];
     snap.forEach(c => list.push(c.val()));
-    document.getElementById('rank-content').innerHTML = list.map((item, i) => `
-        <span class="rank-item ${i===0?'gold':''}">
-            ${i+1}. ${item.name} : <b style="font-size:16px">${item.steps}</b> 步
-        </span>
-    `).join('') || "等待首位大師...";
+    document.getElementById('rank-content').innerHTML = list.map((item, i) => {
+        const dTag = item.difficulty ? `(${item.difficulty})` : "";
+        return `
+            <span class="rank-item ${i===0?'gold':''}">
+                ${i+1}. ${item.name}<small>${dTag}</small> : <b>${item.steps}</b> 步
+            </span>
+        `;
+    }).join('') || "等待首位大師...";
 });
 
+// =========================================================================
+// 🚀 核心函式
+// =========================================================================
 function startGomoku(lv) {
     difficulty = lv;
     document.getElementById('setup-menu').style.display = 'none';
     document.getElementById('game-container').style.display = 'block';
-    document.getElementById('display-lv').innerText = lv.toUpperCase();
-    resizeCanvas();
-    initBoard();
-    requestAnimationFrame(animationLoop);
-}
-
-function resizeCanvas() {
+    document.getElementById('display-lv').innerText = diffLabels[lv];
+    
+    // 初始化棋盤與畫布
     const b = document.getElementById('board');
     canvas.width = b.offsetWidth; canvas.height = b.offsetHeight;
+    initBoard();
+    requestAnimationFrame(animationLoop);
 }
 
 function initBoard() {
@@ -152,7 +174,9 @@ function checkWin(r, c, p) {
     return false;
 }
 
-// --- 大師級 AI 邏輯 ---
+// =========================================================================
+// 🧠 大師級權重 AI
+// =========================================================================
 function findBestMove() {
     let best = {r: 7, c: 7, score: -1};
     for(let r=0; r<15; r++) {
@@ -169,7 +193,7 @@ function findBestMove() {
 function evalPos(r, c) {
     if (difficulty === 'easy') return Math.random();
     let p1 = getW(r, c, 1), p2 = getW(r, c, 2);
-    // 大師級：防禦倍率拉高，且會判斷「活三」與「死四」
+    // 大師級重點：瘋狂防禦玩家的連線
     return difficulty === 'hard' ? (p1 * 1.8 + p2) : (p1 + p2);
 }
 
@@ -177,39 +201,46 @@ function getW(r, c, p) {
     let w = 0;
     const dirs = [[1,0],[0,1],[1,1],[1,-1]];
     for (let [dr, dc] of dirs) {
-        let cnt = 0, side = 0;
+        let cnt = 0, sides = 0;
         for (let i=1; i<5; i++) {
             if (board[r+dr*i]?.[c+dc*i] === p) cnt++; 
-            else { if(board[r+dr*i]?.[c+dc*i] === 0) side++; break; }
+            else { if(board[r+dr*i]?.[c+dc*i] === 0) sides++; break; }
         }
         for (let i=1; i<5; i++) {
             if (board[r-dr*i]?.[c-dc*i] === p) cnt++; 
-            else { if(board[r-dr*i]?.[c-dc*i] === 0) side++; break; }
+            else { if(board[r-dr*i]?.[c-dc*i] === 0) sides++; break; }
         }
-        if (cnt >= 4) w += 10000; // 即將連五
-        else if (cnt === 3 && side === 2) w += 5000; // 活四
+        if (cnt >= 4) w += 10000;
+        else if (cnt === 3 && sides === 2) w += 5000; // 活四
         else if (cnt === 3) w += 800;
-        else if (cnt === 2 && side === 2) w += 400;
+        else if (cnt === 2 && sides === 2) w += 400;
     }
     return w;
 }
 
-// --- 勝利特效與結算 ---
+// =========================================================================
+// ✨ 特效與結算
+// =========================================================================
 function endGame(isPlayerWin) {
     isGameOver = true;
     if (isPlayerWin) {
         setTimeout(() => {
-            const name = prompt(`🏆 完勝 NPC！僅耗費 ${steps} 步。\n請留下大師名號：`) || "隱世高手";
-            rankRef.push({ name, steps, time: Date.now() });
+            const name = prompt(`🏆 勝利！總耗費 ${steps} 步。\n請留下您的大名：`) || "高手";
+            rankRef.push({ 
+                name: name, 
+                steps: steps, 
+                difficulty: diffLabels[difficulty], 
+                time: Date.now() 
+            });
         }, 500);
     } else {
-        alert("NPC 獲勝！再多練習一下吧。");
+        alert("NPC 獲勝！再接再厲。");
     }
 }
 
 function animationLoop() {
     frameCount++;
-    if (isGameOver && difficulty !== 'lose') { // 借用抓牛大賽的煙火邏輯
+    if (isGameOver) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         for(let i=0; i<15; i++) {
             ctx.fillStyle = ['#FFD700', '#FFF', '#FFA500'][i%3];
