@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>岡聯五子棋 - 死神大師版</title>
+    <title>岡聯五子棋 - 就是要上榜</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         :root { --coffee: #6f4e37; --wood: #e3c16f; --grass: #87CEEB; --gold: #FFD700; --red: #ff4444; }
         body { margin: 0; background: var(--grass); font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; display: flex; flex-direction: column; align-items: center; touch-action: none; }
         
-        /* 🏆 排行榜：扁平化設計 (上名下數) */
+        /* 🏆 排行榜：扁平化橫向排列 (不擋棋盤) */
         #leaderboard-zone {
             position: absolute; top: 5px; left: 5px; right: 5px; 
             display: flex; flex-direction: column; gap: 4px; z-index: 110;
@@ -25,9 +25,9 @@
         }
         .rank-box b { font-size: 10px; display: block; margin-bottom: 2px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 2px; }
         
-        /* 橫向列表 */
+        /* 橫向列表 (上名下數) */
         .rank-list-flex { display: flex; justify-content: space-around; gap: 2px; min-height: 25px; }
-        .master-grid-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; min-height: 50px; }
+        .master-grid-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; min-height: 48px; }
 
         .rank-unit { 
             flex: 1; display: flex; flex-direction: column; align-items: center; 
@@ -40,8 +40,8 @@
         .master-grid-box { border-color: var(--red) !important; }
         .master-grid-box b { color: var(--red); }
 
-        /* 選單與棋盤容器 */
-        #setup-menu { margin-top: 165px; text-align: center; background: white; padding: 25px; border-radius: 20px; width: 85%; max-width: 300px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); z-index: 100; }
+        /* 選單與棋盤 */
+        #setup-menu { margin-top: 170px; text-align: center; background: white; padding: 25px; border-radius: 20px; width: 85%; max-width: 300px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); z-index: 100; }
         #game-container { position: relative; margin-top: 160px; z-index: 10; display: none; text-align: center; }
         canvas#victoryCanvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 100; }
         
@@ -62,6 +62,30 @@
 </head>
 <body>
 
+<script>
+// =========================================================================
+// ⚙️ 核心參數調整區 (開頭處)
+// =========================================================================
+const CONFIG = {
+    // 您可以將此處改為 'master' (大師版) 或 'reaper' (死神版)
+    // 'master': 經典防禦邏輯，穩定性高。
+    // 'reaper': 死神邏輯，絕對防禦 + 活口權重，極難在 8 步內獲勝。
+    hardVersion: 'reaper', 
+    
+    firebase: {
+        apiKey: "AIzaSyBQr_3o913vgaWUg4PAuequLEVE1mZFS7M",
+        databaseURL: "https://cowgame-48dd8-default-rtdb.firebaseio.com",
+        projectId: "cowgame-48dd8"
+    }
+};
+
+// --- 初始化 Firebase ---
+firebase.initializeApp(CONFIG.firebase);
+const db = firebase.database();
+const paths = { easy: 'rank_v4_easy', medium: 'rank_v4_medium', hard: 'rank_v4_hard' };
+const topScores = { easy: [], medium: [], hard: [] };
+</script>
+
 <div id="leaderboard-zone">
     <div class="row-one">
         <div class="rank-box">
@@ -75,7 +99,7 @@
     </div>
     <div class="row-two">
         <div class="rank-box master-grid-box">
-            <b>🔥 大師殿堂 Top 6 (死神 AI)</b>
+            <b>🔥 大師殿堂 Top 6 (當前引擎: <span id="engine-label"></span>)</b>
             <div id="rank-hard" class="master-grid-list">載入中...</div>
         </div>
     </div>
@@ -85,7 +109,7 @@
     <h1 style="color:var(--coffee); margin:0; font-size: 24px;">岡聯五子棋</h1>
     <button class="btn" onclick="startGomoku('easy')">初級</button>
     <button class="btn" onclick="startGomoku('medium')">中級</button>
-    <button class="btn" onclick="startGomoku('hard')" style="background:var(--red); box-shadow:0 4px 0 #8e2020">死神大師級</button>
+    <button class="btn" onclick="startGomoku('hard')" style="background:var(--red); box-shadow:0 4px 0 #8e2020">AI 大師對戰</button>
 </div>
 
 <div id="game-container">
@@ -96,24 +120,8 @@
 </div>
 
 <script>
-// --- [1] Firebase 配置 ---
-const firebaseConfig = {
-  apiKey: "AIzaSyBQr_3o913vgaWUg4PAuequLEVE1mZFS7M",
-  databaseURL: "https://cowgame-48dd8-default-rtdb.firebaseio.com",
-  projectId: "cowgame-48dd8"
-};
-
-let db = null;
-try {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.database();
-} catch (e) { console.warn("Firebase 連結受阻，進入離線模式。"); }
-
-const paths = { easy: 'rank_v4_easy', medium: 'rank_v4_medium', hard: 'rank_v4_hard' };
-const topScores = { easy: [], medium: [], hard: [] };
-
+// --- [1] 監聽邏輯 ---
 function listenRank(lv) {
-    if(!db) { document.getElementById(`rank-${lv}`).innerText = "離線"; return; }
     const limit = (lv === 'hard') ? 6 : 3;
     db.ref(paths[lv]).orderByChild('steps').limitToFirst(limit).on('value', snap => {
         const listEl = document.getElementById(`rank-${lv}`);
@@ -132,11 +140,12 @@ function listenRank(lv) {
     });
 }
 ['easy', 'medium', 'hard'].forEach(listenRank);
+document.getElementById('engine-label').innerText = CONFIG.hardVersion.toUpperCase();
 
 // --- [2] 遊戲核心 ---
 let board = [], steps = 0, isGameOver = false, difficulty = 'easy', frameCount = 0;
 const canvas = document.getElementById('victoryCanvas'), ctx = canvas.getContext('2d');
-const diffLabels = { easy: '初級', medium: '中級', hard: '死神大師' };
+const diffLabels = { easy: '初級', medium: '中級', hard: 'AI 大師' };
 
 function startGomoku(lv) {
     difficulty = lv;
@@ -179,10 +188,9 @@ function npcMove() {
 
 function placePiece(r, c, p) {
     board[r][c] = p;
-    const cells = document.getElementsByClassName('cell');
     const div = document.createElement('div');
     div.className = `piece ${p === 1 ? 'black' : 'white'}`;
-    cells[r * 15 + c].appendChild(div);
+    document.getElementsByClassName('cell')[r * 15 + c].appendChild(div);
 }
 
 function checkWin(r, c, p) {
@@ -196,7 +204,7 @@ function checkWin(r, c, p) {
     return false;
 }
 
-// --- [3] 強化 AI 演算法 ---
+// --- [3] 參數化 AI 演算法 ---
 function findBestMove() {
     let best = {r: 7, c: 7, s: -1};
     let candidates = [];
@@ -215,12 +223,13 @@ function findBestMove() {
 function evalPos(r, c) {
     if (difficulty === 'easy') return Math.random();
     let p1 = getW(r, c, 1); // 玩家威脅
-    let p2 = getW(r, c, 2); // 自己的進攻
+    let p2 = getW(r, c, 2); // 自己優勢
     
     if (difficulty === 'hard') {
-        // 增加中心位置加權 (棋盤中心為 7,7)
         let centerBonus = (7 - Math.abs(r - 7)) + (7 - Math.abs(c - 7));
-        return (p1 * 2.2) + p2 + centerBonus; // 2.2 倍絕對防禦
+        // 根據 CONFIG 參數決定防禦強度
+        let defenseMultiplier = (CONFIG.hardVersion === 'reaper') ? 2.2 : 1.8;
+        return (p1 * defenseMultiplier) + p2 + centerBonus;
     }
     return p1 + p2;
 }
@@ -238,14 +247,11 @@ function getW(r, c, p) {
             if (board[r-dr*i]?.[c-dc*i] === p) cnt++; 
             else { if(board[r-dr*i]?.[c-dc*i] === 0) sides++; break; }
         }
-        
-        // 強化版權重邏輯
-        if (cnt >= 4) w += 50000;         // 必殺/必堵
-        else if (cnt === 3 && sides === 2) w += 10000; // 活四 (兩頭通)
-        else if (cnt === 3 && sides === 1) w += 2500;  // 死四 (一頭通)
-        else if (cnt === 2 && sides === 2) w += 1500;  // 活三
-        else if (cnt === 2 && sides === 1) w += 400;   // 死三
-        else if (cnt === 1 && sides === 2) w += 150;   // 活二
+        // 根據 CONFIG 決定是否偵測活口權重
+        if (cnt >= 4) w += 50000;
+        else if (cnt === 3 && sides === 2) w += (CONFIG.hardVersion === 'reaper' ? 10000 : 5000);
+        else if (cnt === 3 && sides === 1) w += 2000;
+        else if (cnt === 2 && sides === 2) w += 1000;
     }
     return w;
 }
@@ -256,13 +262,13 @@ function endGame(win) {
         const limit = (difficulty === 'hard') ? 6 : 3;
         const myList = topScores[difficulty];
         const isTop = myList.length < limit || steps < myList[myList.length - 1].steps;
-        if (isTop && db) {
+        if (isTop) {
             setTimeout(() => {
-                const name = prompt(`🏆 破紀錄！在[${diffLabels[difficulty]}]僅用 ${steps} 步！\n請留名：`) || "高手";
+                const name = prompt(`🏆 破紀錄！[${diffLabels[difficulty]}] 僅用 ${steps} 步！\n請留名：`) || "高手";
                 db.ref(paths[difficulty]).push({ name, steps, time: Date.now() });
             }, 600);
         } else alert(`勝利！用了 ${steps} 步。`);
-    } else alert("NPC 獲勝！多喝口岡聯茶補充體力。");
+    } else alert("NPC 獲勝！去喝口岡聯鮮乳添智慧");
 }
 
 function animationLoop() {
