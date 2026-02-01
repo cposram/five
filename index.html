@@ -2,95 +2,108 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>專業五子棋對戰 - Pro版</title>
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-bundle.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-bundle.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>岡聯五子棋 - 牧場大師賽</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        :root { --main-coffee: #6f4e37; --bg-cream: #f4f1ea; --wood: #e3c16f; }
-        body { font-family: 'Segoe UI', Microsoft JhengHei, sans-serif; background: var(--bg-cream); margin: 0; display: flex; flex-direction: column; align-items: center; }
+        :root { --coffee: #6f4e37; --wood: #e3c16f; --grass: #87CEEB; }
+        body { margin: 0; background: var(--grass); font-family: "Microsoft JhengHei", sans-serif; display: flex; flex-direction: column; align-items: center; }
         
-        /* 排行榜 */
-        #leaderboard { position: fixed; right: 20px; top: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 180px; z-index: 100; }
-        #leaderboard h3 { margin-top: 0; font-size: 16px; color: var(--main-coffee); border-bottom: 2px solid var(--main-coffee); }
-        #rank-list { padding-left: 20px; font-size: 14px; }
-
-        /* 選單與標題 */
-        .container { margin-top: 50px; text-align: center; }
-        #menu { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        h1 { color: var(--main-coffee); margin-bottom: 30px; }
-        
-        /* 棋盤佈局 */
-        #game-info { display: none; }
-        #board { 
-            display: grid; grid-template-columns: repeat(15, 30px); grid-template-rows: repeat(15, 30px); 
-            background: var(--wood); border: 4px solid #8b4513; border-radius: 4px; 
-            margin: 20px auto; cursor: crosshair; box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        /* 右上角排行榜 */
+        #ui-leaderboard {
+            position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.4);
+            color: white; padding: 10px; border-radius: 10px; font-size: 14px; z-index: 100;
+            min-width: 150px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
-        .cell { width: 30px; height: 30px; border: 0.5px solid rgba(139, 69, 19, 0.3); box-sizing: border-box; display: flex; justify-content: center; align-items: center; }
+        .rank-item { margin: 3px 0; display: block; }
+        .gold { color: #FFD700; font-weight: bold; }
+
+        /* 遊戲選單 */
+        #setup-menu { margin-top: 100px; text-align: center; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        h1 { color: var(--coffee); }
         
-        /* 棋子樣式 */
-        .piece { width: 26px; height: 26px; border-radius: 50%; animation: drop 0.2s ease-out; }
-        .black { background: radial-gradient(circle at 30% 30%, #444, #000); box-shadow: 2px 2px 5px rgba(0,0,0,0.4); }
-        .white { background: radial-gradient(circle at 30% 30%, #fff, #ccc); box-shadow: 2px 2px 5px rgba(0,0,0,0.2); }
+        /* 棋盤區域 */
+        #game-area { display: none; text-align: center; margin-top: 50px; }
+        #board { 
+            display: grid; grid-template-columns: repeat(15, 25px); grid-template-rows: repeat(15, 25px); 
+            background: var(--wood); border: 3px solid #8b4513; margin: 15px auto;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3); cursor: pointer;
+        }
+        @media (min-width: 600px) { #board { grid-template-columns: repeat(15, 35px); grid-template-rows: repeat(15, 35px); } }
+        
+        .cell { border: 0.5px solid rgba(139, 69, 19, 0.3); display: flex; justify-content: center; align-items: center; position: relative; }
+        .piece { width: 85%; height: 85%; border-radius: 50%; z-index: 5; animation: drop 0.2s ease-out; }
+        .black { background: radial-gradient(circle at 30% 30%, #444, #000); box-shadow: 1px 1px 3px rgba(0,0,0,0.5); }
+        .white { background: radial-gradient(circle at 30% 30%, #fff, #ccc); box-shadow: 1px 1px 3px rgba(0,0,0,0.3); }
+        
         @keyframes drop { from { transform: scale(1.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-        /* 按鈕 */
-        button { background: var(--main-coffee); color: white; border: none; padding: 12px 25px; margin: 10px; border-radius: 8px; font-weight: bold; transition: 0.3s; cursor: pointer; }
-        button:hover { transform: translateY(-2px); background: #5a3e2b; }
-        .stats { font-size: 18px; font-weight: bold; color: #555; }
+        .btn { background: var(--coffee); color: white; border: none; padding: 12px 25px; margin: 5px; border-radius: 50px; font-weight: bold; cursor: pointer; }
+        .stats { font-size: 18px; color: #fff; text-shadow: 1px 1px 3px #000; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
-<div id="leaderboard">
-    <h3>🏆 Top 3 (最精簡勝)</h3>
-    <ol id="rank-list"><li>等待中...</li></ol>
+<div id="ui-leaderboard">
+    <b>🏆 前三名 (最少步數)</b>
+    <div id="rank-content">載入中...</div>
 </div>
 
-<div class="container">
-    <div id="menu">
-        <h1>五子棋 NPC 對戰</h1>
-        <button onclick="bootGame('easy')">初級 (練習用)</button>
-        <button onclick="bootGame('medium')">中級 (具防守性)</button>
-        <button onclick="bootGame('hard')">高級 (專業進攻)</button>
-    </div>
+<div id="setup-menu">
+    <h1>岡聯五子棋</h1>
+    <p>請選擇 NPC 難度</p>
+    <button class="btn" onclick="startGomoku('easy')">初級</button>
+    <button class="btn" onclick="startGomoku('medium')">中級</button>
+    <button class="btn" onclick="startGomoku('hard')">高級</button>
+</div>
 
-    <div id="game-info">
-        <div class="stats">難度: <span id="cur-lv">-</span> | 步數: <span id="step-count">0</span></div>
-        <div id="board"></div>
-        <button onclick="location.reload()" style="background:#999;">回主選單</button>
-    </div>
+<div id="game-area">
+    <div class="stats">難度: <span id="display-lv">-</span> | 步數: <span id="step-count">0</span></div>
+    <div id="board"></div>
+    <button class="btn" onclick="location.reload()">放棄並返回</button>
 </div>
 
 <script>
-// --- [1] Firebase 設定 (請務必填入您的 Key) ---
+// =========================================================================
+// 🔧 Firebase 整合 (沿用您的 API Key)
+// =========================================================================
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    databaseURL: "YOUR_DATABASE_URL",
-    projectId: "YOUR_PROJECT_ID"
+  apiKey: "AIzaSyBQr_3o913vgaWUg4PAuequLEVE1mZFS7M",
+  authDomain: "cowgame-48dd8.firebaseapp.com",
+  databaseURL: "https://cowgame-48dd8-default-rtdb.firebaseio.com",
+  projectId: "cowgame-48dd8",
+  storageBucket: "cowgame-48dd8.firebasestorage.app",
+  messagingSenderId: "957972615393",
+  appId: "1:957972615393:web:14fd2ebb956a6c48ade7a0"
 };
 
-let db;
-try {
-    const app = firebase.initializeApp(firebaseConfig);
-    db = firebase.database();
-    updateLeaderboard();
-} catch (e) { console.warn("Firebase 未初始化，將以離線模式運行。"); }
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const rankRef = db.ref('gomoku_leaderboard'); // 建立新路徑，避免混淆
 
-// --- [2] 遊戲狀態 ---
-let board = [];
-let steps = 0;
-let difficulty = 'easy';
-let isGameOver = false;
+// =========================================================================
+// 🎮 遊戲邏輯
+// =========================================================================
+let board = [], steps = 0, isGameOver = false, difficulty = 'easy';
 
-// --- [3] 核心功能：啟動遊戲 ---
-function bootGame(lv) {
-    console.log("正在進入遊戲，等級：" + lv);
+// 實時更新排行榜 (對齊雲端邏輯：步數少者優先)
+rankRef.orderByChild('steps').limitToFirst(3).on('value', (snapshot) => {
+    const list = [];
+    snapshot.forEach(child => { list.push(child.val()); });
+    const container = document.getElementById('rank-content');
+    container.innerHTML = list.map((item, i) => `
+        <span class="rank-item ${i===0?'gold':''}">
+            ${i+1}. ${item.name} : ${item.steps}步
+        </span>
+    `).join('') || "尚無紀錄";
+});
+
+function startGomoku(lv) {
     difficulty = lv;
-    document.getElementById('menu').style.display = 'none';
-    document.getElementById('game-info').style.display = 'block';
-    document.getElementById('cur-lv').innerText = lv.toUpperCase();
+    document.getElementById('setup-menu').style.display = 'none';
+    document.getElementById('game-area').style.display = 'block';
+    document.getElementById('display-lv').innerText = lv.toUpperCase();
     initBoard();
 }
 
@@ -102,92 +115,43 @@ function initBoard() {
         for (let c = 0; c < 15; c++) {
             const cell = document.createElement('div');
             cell.className = 'cell';
-            cell.dataset.r = r; cell.dataset.c = c;
-            cell.onclick = () => playerAction(r, c);
+            cell.onclick = () => playerMove(r, c);
             boardEl.appendChild(cell);
         }
     }
 }
 
-function playerAction(r, c) {
+function playerMove(r, c) {
     if (board[r][c] !== 0 || isGameOver) return;
-    
     placePiece(r, c, 1);
     steps++;
     document.getElementById('step-count').innerText = steps;
 
     if (checkWin(r, c, 1)) {
         isGameOver = true;
-        setTimeout(() => {
-            alert(`🎉 您贏了！總共只用了 ${steps} 步！`);
-            saveResult(steps);
-        }, 100);
+        setTimeout(() => handleWin(), 100);
         return;
     }
-    
-    setTimeout(npcAction, 400);
+    setTimeout(npcMove, 500);
 }
 
-// --- [4] AI 邏輯：權重掃描演算法 ---
-function npcAction() {
+function npcMove() {
     if (isGameOver) return;
-    let best = { r: 7, c: 7, score: -1 };
-    
-    // 遍歷所有格子，計算權重
-    for (let r = 0; r < 15; r++) {
-        for (let c = 0; c < 15; c++) {
-            if (board[r][c] === 0) {
-                let score = evaluatePos(r, c);
-                if (score > best.score) {
-                    best = { r, c, score };
-                }
-            }
-        }
-    }
-    
-    placePiece(best.r, best.c, 2);
-    if (checkWin(best.r, best.c, 2)) {
+    let bestMove = findBestMove();
+    placePiece(bestMove.r, bestMove.c, 2);
+    if (checkWin(bestMove.r, bestMove.c, 2)) {
         isGameOver = true;
-        setTimeout(() => alert("NPC 獲勝！再接再厲。"), 100);
+        setTimeout(() => alert("NPC 獲勝！請再接再厲。"), 100);
     }
 }
 
-function evaluatePos(r, c) {
-    if (difficulty === 'easy') return Math.random();
-    
-    // 簡單權重表 (高級難度會更重視連 3 與連 4)
-    let attackScore = getScore(r, c, 2); // 自己的進攻
-    let defenseScore = getScore(r, c, 1); // 擋住玩家
-    
-    if (difficulty === 'medium') return attackScore + defenseScore * 0.8;
-    return attackScore + defenseScore * 1.5; // 高級更看重防守
-}
-
-function getScore(r, c, p) {
-    let score = 0;
-    const directions = [[1,0],[0,1],[1,1],[1,-1]];
-    for (let [dr, dc] of directions) {
-        let count = 1;
-        // 模擬落子後能連成幾個
-        for (let i=1; i<5; i++) if (board[r+dr*i]?.[c+dc*i] === p) count++; else break;
-        for (let i=1; i<5; i++) if (board[r-dr*i]?.[c-dc*i] === p) count++; else break;
-        
-        // 權重計算
-        if (count >= 5) score += 100000;
-        else if (count === 4) score += 5000;
-        else if (count === 3) score += 500;
-        else if (count === 2) score += 50;
-    }
-    return score;
-}
-
-// --- [5] 通用邏輯 ---
 function placePiece(r, c, p) {
     board[r][c] = p;
-    const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
-    const div = document.createElement('div');
-    div.className = `piece ${p === 1 ? 'black' : 'white'}`;
-    cell.appendChild(div);
+    const cellIndex = r * 15 + c;
+    const cell = document.getElementsByClassName('cell')[cellIndex];
+    const piece = document.createElement('div');
+    piece.className = `piece ${p === 1 ? 'black' : 'white'}`;
+    cell.appendChild(piece);
 }
 
 function checkWin(r, c, p) {
@@ -201,23 +165,53 @@ function checkWin(r, c, p) {
     return false;
 }
 
-function saveResult(s) {
-    const name = prompt("榮登榜單！請留下您的稱呼:") || "無名大師";
-    if (db) {
-        db.ref('gomoku_ranking').push({ name, steps: s, time: Date.now() });
+// 根據難度決定 AI 落子
+function findBestMove() {
+    if (difficulty === 'easy') {
+        let r, c;
+        do { r = Math.floor(Math.random()*15); c = Math.floor(Math.random()*15); } while (board[r][c] !== 0);
+        return {r, c};
     }
+    
+    // 中/高級 AI：權重掃描
+    let best = {r: 7, c: 7, score: -1};
+    for(let r=0; r<15; r++) {
+        for(let c=0; c<15; c++) {
+            if (board[r][c] === 0) {
+                let score = evalPos(r, c);
+                if (score > best.score) { best = {r, c, score}; }
+            }
+        }
+    }
+    return best;
 }
 
-function updateLeaderboard() {
-    if (!db) return;
-    db.ref('gomoku_ranking').orderByChild('steps').limitToFirst(3).on('value', (snap) => {
-        const list = document.getElementById('rank-list');
-        list.innerHTML = '';
-        snap.forEach(child => {
-            const data = child.val();
-            list.innerHTML += `<li>${data.name} (${data.steps}步)</li>`;
-        });
-    });
+function evalPos(r, c) {
+    let score = 0;
+    const p1Score = getWeight(r, c, 1); // 玩家威脅
+    const p2Score = getWeight(r, c, 2); // 自己優勢
+    // 高級難度更具侵略性
+    return difficulty === 'hard' ? (p1Score * 1.5 + p2Score) : (p1Score + p2Score);
+}
+
+function getWeight(r, c, p) {
+    let weight = 0;
+    const directions = [[1,0],[0,1],[1,1],[1,-1]];
+    for (let [dr, dc] of directions) {
+        let count = 0;
+        for (let i=1; i<5; i++) if (board[r+dr*i]?.[c+dc*i] === p) count++; else break;
+        for (let i=1; i<5; i++) if (board[r-dr*i]?.[c-dc*i] === p) count++; else break;
+        if (count >= 4) weight += 10000;
+        else if (count === 3) weight += 1000;
+        else if (count === 2) weight += 100;
+    }
+    return weight;
+}
+
+function handleWin() {
+    const name = prompt(`🎉 勝利！總共花了 ${steps} 步。\n請留下您在岡聯的大名：`) || "高手";
+    rankRef.push({ name, steps, time: Date.now() });
+    alert("成績已對齊雲端！");
 }
 </script>
 </body>
