@@ -10,49 +10,54 @@
         :root { --coffee: #6f4e37; --wood: #e3c16f; --grass: #87CEEB; --gold: #FFD700; --red: #ff4444; }
         body { margin: 0; background: var(--grass); font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; display: flex; flex-direction: column; align-items: center; touch-action: none; }
         
-        /* 🏆 排行榜總容器 - 雙列佈局 */
+        /* 🏆 極致扁平排行榜區域 */
         #leaderboard-zone {
-            position: absolute; top: 10px; left: 8px; right: 8px; 
-            display: flex; flex-direction: column; gap: 6px; z-index: 110;
+            position: absolute; top: 5px; left: 5px; right: 5px; 
+            display: flex; flex-direction: column; gap: 5px; z-index: 110;
         }
 
-        /* 第一列：初級 + 中級 */
-        .row-one { display: flex; gap: 6px; }
+        /* 第一列：初級(左) + 中級(右) 橫向排列 */
+        .row-one { display: flex; gap: 5px; }
         
-        /* 第二列：大師級 (橫跨) */
+        /* 第二列：大師級 (橫跨全寬) */
         .row-two { width: 100%; }
 
         .rank-box {
-            background: rgba(0,0,0,0.85); color: white; border-radius: 10px;
-            padding: 8px; border: 1px solid var(--gold); box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            background: rgba(0,0,0,0.85); color: white; border-radius: 8px;
+            padding: 5px; border: 1px solid var(--gold); box-shadow: 0 2px 8px rgba(0,0,0,0.4);
             text-align: center; flex: 1;
         }
-        .rank-box b { font-size: 11px; display: block; margin-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 2px; }
+        .rank-box b { font-size: 10px; display: block; margin-bottom: 3px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 2px; }
         
-        /* 列表對齊 */
-        .rank-list { font-size: 9px; display: flex; flex-direction: column; gap: 2px; }
-        
-        /* 大師級 Top 6 專屬格狀佈局 (兩排三列) */
-        .master-grid {
-            display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 1fr);
-            gap: 4px; border-color: var(--red) !important;
+        /* 🚀 核心修改：上排人名、下排步數的橫向列表 */
+        .rank-list-flex { 
+            display: flex; justify-content: space-around; gap: 2px; 
         }
-        .master-grid b { color: var(--red); }
 
-        .rank-unit { border-bottom: 0.5px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; padding: 0 3px; }
-        .rank-unit .name { color: #ccc; max-width: 50px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .rank-unit .steps { color: var(--gold); font-weight: bold; }
+        .rank-unit { 
+            flex: 1; display: flex; flex-direction: column; align-items: center; 
+            font-size: 9px; line-height: 1.2; border-right: 0.5px solid rgba(255,255,255,0.1);
+        }
+        .rank-unit:last-child { border-right: none; }
+        
+        .rank-unit .name { color: #ccc; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .rank-unit .steps { color: var(--gold); font-weight: bold; font-size: 11px; }
 
-        /* 遊戲區域區域 - 確保不被榜單擋住 */
-        #setup-menu { margin-top: 180px; text-align: center; background: white; padding: 30px; border-radius: 20px; width: 80%; max-width: 300px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 100; }
-        #game-container { position: relative; margin-top: 175px; z-index: 10; display: none; text-align: center; }
+        /* 大師級專用：Top 6 兩排橫向 */
+        .master-grid-box { border-color: var(--red) !important; }
+        .master-grid-box b { color: var(--red); }
+        .master-flex { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+
+        /* 調整遊戲區域，防止擋到棋盤 */
+        #setup-menu { margin-top: 155px; text-align: center; background: white; padding: 25px; border-radius: 20px; width: 85%; max-width: 300px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); z-index: 100; }
+        #game-container { position: relative; margin-top: 150px; z-index: 10; display: none; text-align: center; }
         canvas#victoryCanvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 100; }
         
         #board { 
-            display: grid; grid-template-columns: repeat(15, 22px); grid-template-rows: repeat(15, 22px); 
-            background: var(--wood); border: 4px solid #8b4513; border-radius: 5px; cursor: pointer; margin: 0 auto;
+            display: grid; grid-template-columns: repeat(15, 23px); grid-template-rows: repeat(15, 23px); 
+            background: var(--wood); border: 4px solid #8b4513; border-radius: 6px; cursor: pointer; margin: 0 auto;
         }
-        @media (min-width: 600px) { #board { grid-template-columns: repeat(15, 36px); grid-template-rows: repeat(15, 36px); } }
+        @media (min-width: 600px) { #board { grid-template-columns: repeat(15, 38px); grid-template-rows: repeat(15, 38px); } }
         
         .cell { border: 0.5px solid rgba(139, 69, 19, 0.4); display: flex; justify-content: center; align-items: center; }
         .piece { width: 92%; height: 92%; border-radius: 50%; animation: drop 0.2s ease-out; }
@@ -60,7 +65,7 @@
         .white { background: radial-gradient(circle at 35% 35%, #fff, #bbb); }
         
         .btn { background: var(--coffee); color: white; border: none; padding: 12px; margin: 8px; border-radius: 50px; font-weight: bold; cursor: pointer; font-size: 18px; box-shadow: 0 4px 0 #4e3626; width: 100%; }
-        .stats { font-size: 14px; color: white; text-shadow: 1px 1px 3px #000; margin-bottom: 5px; font-weight: bold; }
+        .stats { font-size: 13px; color: white; text-shadow: 1px 1px 3px #000; margin-bottom: 5px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -69,18 +74,18 @@
     <div class="row-one">
         <div class="rank-box">
             <b>🍃 初級 Top 3</b>
-            <div id="rank-easy" class="rank-list">讀取中...</div>
+            <div id="rank-easy" class="rank-list-flex">等待挑戰...</div>
         </div>
         <div class="rank-box">
             <b>🛡️ 中級 Top 3</b>
-            <div id="rank-medium" class="rank-list">讀取中...</div>
+            <div id="rank-medium" class="rank-list-flex">等待挑戰...</div>
         </div>
     </div>
     <div class="row-two">
-        <div class="rank-box master-grid">
-            <b style="grid-column: span 2;">🔥 大師殿堂 Top 6 (對齊雲端)</b>
-            <div id="rank-hard" class="rank-list" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-                讀取中...
+        <div class="rank-box master-grid-box">
+            <b>🔥 大師殿堂 Top 6</b>
+            <div id="rank-hard" class="master-flex">
+                載入中...
             </div>
         </div>
     </div>
@@ -97,7 +102,7 @@
     <div class="stats"><span id="display-lv"></span> | 步數: <span id="step-count">0</span></div>
     <div id="board"></div>
     <canvas id="victoryCanvas"></canvas>
-    <button class="btn" onclick="location.reload()" style="background:#666; box-shadow:0 4px 0 #444; margin-top:10px; width:100px; font-size:12px;">回選單</button>
+    <button class="btn" onclick="location.reload()" style="background:#666; box-shadow:0 4px 0 #444; margin-top:10px; width:100px; font-size:12px; padding:8px;">回選單</button>
 </div>
 
 <script>
@@ -113,7 +118,7 @@ const db = firebase.database();
 const paths = { easy: 'rank_v4_easy', medium: 'rank_v4_medium', hard: 'rank_v4_hard' };
 const topScores = { easy: [], medium: [], hard: [] };
 
-// --- [2] 監聽邏輯 ---
+// --- [2] 扁平化監聽邏輯 ---
 function listenRank(lv) {
     const limit = (lv === 'hard') ? 6 : 3;
     db.ref(paths[lv]).orderByChild('steps').limitToFirst(limit).on('value', snap => {
@@ -128,13 +133,13 @@ function listenRank(lv) {
             });
             listEl.innerHTML = html;
         } else {
-            listEl.innerHTML = "<span style='color:#666'>尚無紀錄</span>";
+            listEl.innerHTML = "<span style='color:#777; font-size:9px;'>等待紀錄...</span>";
         }
     });
 }
 ['easy', 'medium', 'hard'].forEach(listenRank);
 
-// --- [3] 遊戲核心邏輯 ---
+// --- [3] 遊戲核心 ---
 let board = [], steps = 0, isGameOver = false, difficulty = 'easy', frameCount = 0;
 const canvas = document.getElementById('victoryCanvas'), ctx = canvas.getContext('2d');
 const diffLabels = { easy: '初級', medium: '中級', hard: '大師級' };
@@ -167,7 +172,7 @@ function playerMove(r, c) {
     placePiece(r, c, 1); steps++;
     document.getElementById('step-count').innerText = steps;
     if (checkWin(r, c, 1)) { endGame(true); return; }
-    setTimeout(npcMove, 400);
+    setTimeout(npcMove, 450);
 }
 
 function npcMove() {
@@ -196,7 +201,6 @@ function checkWin(r, c, p) {
     return false;
 }
 
-// AI 權重運算
 function findBestMove() {
     let best = {r: 7, c: 7, s: -1};
     for(let r=0; r<15; r++) {
@@ -236,7 +240,6 @@ function getW(r, c, p) {
     return w;
 }
 
-// 結算與紀錄
 function endGame(win) {
     isGameOver = true;
     if (win) {
@@ -245,23 +248,23 @@ function endGame(win) {
         const isTop = myList.length < limit || steps < myList[myList.length - 1].steps;
         if (isTop) {
             setTimeout(() => {
-                const name = prompt(`🏆 新紀錄！[${diffLabels[difficulty]}] ${steps} 步！\n請留名：`) || "高手";
+                const name = prompt(`🏆 破紀錄！在[${diffLabels[difficulty]}]僅用 ${steps} 步！\n請留名：`) || "高手";
                 db.ref(paths[difficulty]).push({ name, steps, time: Date.now() });
-            }, 500);
+            }, 600);
         } else {
             alert(`勝利！用了 ${steps} 步。可惜未擠進前 ${limit} 名！`);
         }
-    } else alert("NPC 獲勝！多吃點番茄(1000067871.jpg)補充營養再戰！");
+    } else alert("NPC 獲勝！喝口 LØV 茶再戰！");
 }
 
 function animationLoop() {
     frameCount++;
     if (isGameOver) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        for(let i=0; i<12; i++) {
-            ctx.fillStyle = i%2===0?'#FFD700':'#FFF';
+        for(let i=0; i<15; i++) {
+            ctx.fillStyle = i%2===0?var(--gold):'#FFF';
             ctx.beginPath();
-            let x = (frameCount*5 + i*100)%canvas.width, y = (frameCount*3 + i*80)%canvas.height;
+            let x = (frameCount*5 + i*100)%canvas.width, y = (frameCount*3 + i*90)%canvas.height;
             ctx.arc(x, y, 3, 0, Math.PI*2); ctx.fill();
         }
     }
