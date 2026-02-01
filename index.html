@@ -3,23 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>岡聯五子棋 - 就是要上榜</title>
+    <title>岡聯五子棋 - 死神大師版</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         :root { --coffee: #6f4e37; --wood: #e3c16f; --grass: #87CEEB; --gold: #FFD700; --red: #ff4444; }
         body { margin: 0; background: var(--grass); font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; display: flex; flex-direction: column; align-items: center; touch-action: none; }
         
-        /* 🏆 極致扁平排行榜區域 */
+        /* 🏆 排行榜：扁平化設計 (上名下數) */
         #leaderboard-zone {
             position: absolute; top: 5px; left: 5px; right: 5px; 
             display: flex; flex-direction: column; gap: 4px; z-index: 110;
         }
-
-        /* 第一列：初級(左) + 中級(右) */
         .row-one { display: flex; gap: 4px; }
-        
-        /* 第二列：大師級 (橫跨全寬) */
         .row-two { width: 100%; }
 
         .rank-box {
@@ -29,29 +25,28 @@
         }
         .rank-box b { font-size: 10px; display: block; margin-bottom: 2px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 2px; }
         
-        /* 🚀 佈局優化：上排人名、下排步數 */
-        .rank-list-flex { display: flex; justify-content: space-around; gap: 2px; min-height: 22px; }
-        .master-grid-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; min-height: 45px; }
+        /* 橫向列表 */
+        .rank-list-flex { display: flex; justify-content: space-around; gap: 2px; min-height: 25px; }
+        .master-grid-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; min-height: 50px; }
 
         .rank-unit { 
             flex: 1; display: flex; flex-direction: column; align-items: center; 
             font-size: 9px; line-height: 1.1; border-right: 0.5px solid rgba(255,255,255,0.1);
         }
         .rank-unit:last-child { border-right: none; }
-        
-        .rank-unit .name { color: #ccc; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: normal; }
-        .rank-unit .steps { color: var(--gold); font-weight: bold; font-size: 10px; }
+        .rank-unit .name { color: #ccc; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .rank-unit .steps { color: var(--gold); font-weight: bold; font-size: 11px; }
 
         .master-grid-box { border-color: var(--red) !important; }
         .master-grid-box b { color: var(--red); }
 
-        /* 遊戲啟動選單與棋盤容器 */
-        #setup-menu { margin-top: 155px; text-align: center; background: white; padding: 25px; border-radius: 20px; width: 85%; max-width: 300px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); z-index: 100; }
-        #game-container { position: relative; margin-top: 150px; z-index: 10; display: none; text-align: center; }
+        /* 選單與棋盤容器 */
+        #setup-menu { margin-top: 165px; text-align: center; background: white; padding: 25px; border-radius: 20px; width: 85%; max-width: 300px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); z-index: 100; }
+        #game-container { position: relative; margin-top: 160px; z-index: 10; display: none; text-align: center; }
         canvas#victoryCanvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 100; }
         
         #board { 
-            display: grid; grid-template-columns: repeat(15, 23px); grid-template-rows: repeat(15, 23px); 
+            display: grid; grid-template-columns: repeat(15, 22px); grid-template-rows: repeat(15, 22px); 
             background: var(--wood); border: 4px solid #8b4513; border-radius: 6px; cursor: pointer; margin: 0 auto;
         }
         @media (min-width: 600px) { #board { grid-template-columns: repeat(15, 38px); grid-template-rows: repeat(15, 38px); } }
@@ -70,17 +65,17 @@
 <div id="leaderboard-zone">
     <div class="row-one">
         <div class="rank-box">
-            <b>🍃 初級 Top 3</b>
+            <b>初級 Top 3</b>
             <div id="rank-easy" class="rank-list-flex">載入中...</div>
         </div>
         <div class="rank-box">
-            <b>🛡️ 中級 Top 3</b>
+            <b>中級 Top 3</b>
             <div id="rank-medium" class="rank-list-flex">載入中...</div>
         </div>
     </div>
     <div class="row-two">
         <div class="rank-box master-grid-box">
-            <b>🔥 大師殿堂 Top 6</b>
+            <b>🔥 大師殿堂 Top 6 (死神 AI)</b>
             <div id="rank-hard" class="master-grid-list">載入中...</div>
         </div>
     </div>
@@ -90,7 +85,7 @@
     <h1 style="color:var(--coffee); margin:0; font-size: 24px;">岡聯五子棋</h1>
     <button class="btn" onclick="startGomoku('easy')">初級</button>
     <button class="btn" onclick="startGomoku('medium')">中級</button>
-    <button class="btn" onclick="startGomoku('hard')" style="background:var(--red); box-shadow:0 4px 0 #8e2020">大師級 NPC</button>
+    <button class="btn" onclick="startGomoku('hard')" style="background:var(--red); box-shadow:0 4px 0 #8e2020">死神大師級</button>
 </div>
 
 <div id="game-container">
@@ -101,7 +96,7 @@
 </div>
 
 <script>
-// --- [1] Firebase 初始化 (加上強大保護) ---
+// --- [1] Firebase 配置 ---
 const firebaseConfig = {
   apiKey: "AIzaSyBQr_3o913vgaWUg4PAuequLEVE1mZFS7M",
   databaseURL: "https://cowgame-48dd8-default-rtdb.firebaseio.com",
@@ -112,29 +107,18 @@ let db = null;
 try {
     firebase.initializeApp(firebaseConfig);
     db = firebase.database();
-} catch (err) { console.warn("Firebase 連線受阻，改為離線模式。"); }
+} catch (e) { console.warn("Firebase 連結受阻，進入離線模式。"); }
 
 const paths = { easy: 'rank_v4_easy', medium: 'rank_v4_medium', hard: 'rank_v4_hard' };
 const topScores = { easy: [], medium: [], hard: [] };
 
-// --- [2] 監聽邏輯 (增加逾時處理，避免畫面卡死) ---
 function listenRank(lv) {
-    if (!db) { document.getElementById(`rank-${lv}`).innerHTML = "離線模式"; return; }
+    if(!db) { document.getElementById(`rank-${lv}`).innerText = "離線"; return; }
     const limit = (lv === 'hard') ? 6 : 3;
-    
-    // 設定一個逾時 fallback
-    const timer = setTimeout(() => {
-        if (document.getElementById(`rank-${lv}`).innerText === "載入中...") {
-            document.getElementById(`rank-${lv}`).innerHTML = "連線逾時";
-        }
-    }, 5000);
-
     db.ref(paths[lv]).orderByChild('steps').limitToFirst(limit).on('value', snap => {
-        clearTimeout(timer);
         const listEl = document.getElementById(`rank-${lv}`);
         topScores[lv] = [];
         let html = "";
-        
         if (snap.exists()) {
             snap.forEach(c => {
                 const d = c.val();
@@ -143,21 +127,18 @@ function listenRank(lv) {
             });
             listEl.innerHTML = html;
         } else {
-            listEl.innerHTML = "等待紀錄";
+            listEl.innerHTML = "<span style='color:#777; font-size:9px;'>等待紀錄</span>";
         }
-    }, (error) => {
-        document.getElementById(`rank-${lv}`).innerHTML = "權限受限";
     });
 }
 ['easy', 'medium', 'hard'].forEach(listenRank);
 
-// --- [3] 核心遊戲邏輯 (獨立於 Firebase 之外，保證可點擊) ---
+// --- [2] 遊戲核心 ---
 let board = [], steps = 0, isGameOver = false, difficulty = 'easy', frameCount = 0;
 const canvas = document.getElementById('victoryCanvas'), ctx = canvas.getContext('2d');
-const diffLabels = { easy: '初級', medium: '中級', hard: '大師級' };
+const diffLabels = { easy: '初級', medium: '中級', hard: '死神大師' };
 
 function startGomoku(lv) {
-    console.log("Start button clicked: ", lv);
     difficulty = lv;
     document.getElementById('setup-menu').style.display = 'none';
     document.getElementById('game-container').style.display = 'block';
@@ -178,9 +159,7 @@ function initBoard() {
             el.appendChild(div);
         }
     }
-    // 確保 Canvas 大小正確
-    canvas.width = el.offsetWidth;
-    canvas.height = el.offsetHeight;
+    canvas.width = el.offsetWidth; canvas.height = el.offsetHeight;
 }
 
 function playerMove(r, c) {
@@ -217,23 +196,33 @@ function checkWin(r, c, p) {
     return false;
 }
 
+// --- [3] 強化 AI 演算法 ---
 function findBestMove() {
     let best = {r: 7, c: 7, s: -1};
+    let candidates = [];
     for(let r=0; r<15; r++) {
         for(let c=0; c<15; c++) {
             if (board[r][c] === 0) {
                 let s = evalPos(r, c);
-                if (s > best.s) best = {r, c, s};
+                if (s > best.s) { best = {r, c, s}; candidates = [{r, c}]; }
+                else if (s === best.s) { candidates.push({r, c}); }
             }
         }
     }
-    return best;
+    return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
 function evalPos(r, c) {
     if (difficulty === 'easy') return Math.random();
-    let p1 = getW(r, c, 1), p2 = getW(r, c, 2);
-    return (difficulty === 'hard') ? (p1 * 1.8 + p2) : (p1 + p2);
+    let p1 = getW(r, c, 1); // 玩家威脅
+    let p2 = getW(r, c, 2); // 自己的進攻
+    
+    if (difficulty === 'hard') {
+        // 增加中心位置加權 (棋盤中心為 7,7)
+        let centerBonus = (7 - Math.abs(r - 7)) + (7 - Math.abs(c - 7));
+        return (p1 * 2.2) + p2 + centerBonus; // 2.2 倍絕對防禦
+    }
+    return p1 + p2;
 }
 
 function getW(r, c, p) {
@@ -249,9 +238,14 @@ function getW(r, c, p) {
             if (board[r-dr*i]?.[c-dc*i] === p) cnt++; 
             else { if(board[r-dr*i]?.[c-dc*i] === 0) sides++; break; }
         }
-        if (cnt >= 4) w += 10000;
-        else if (cnt === 3 && sides === 2) w += 5000;
-        else if (cnt === 3) w += 800;
+        
+        // 強化版權重邏輯
+        if (cnt >= 4) w += 50000;         // 必殺/必堵
+        else if (cnt === 3 && sides === 2) w += 10000; // 活四 (兩頭通)
+        else if (cnt === 3 && sides === 1) w += 2500;  // 死四 (一頭通)
+        else if (cnt === 2 && sides === 2) w += 1500;  // 活三
+        else if (cnt === 2 && sides === 1) w += 400;   // 死三
+        else if (cnt === 1 && sides === 2) w += 150;   // 活二
     }
     return w;
 }
@@ -267,10 +261,8 @@ function endGame(win) {
                 const name = prompt(`🏆 破紀錄！在[${diffLabels[difficulty]}]僅用 ${steps} 步！\n請留名：`) || "高手";
                 db.ref(paths[difficulty]).push({ name, steps, time: Date.now() });
             }, 600);
-        } else {
-            alert(`勝利！用了 ${steps} 步。`);
-        }
-    } else alert("NPC 獲勝！喝口熱茶潤潤環甲肌，下次再來。");
+        } else alert(`勝利！用了 ${steps} 步。`);
+    } else alert("NPC 獲勝！多喝口岡聯茶補充體力。");
 }
 
 function animationLoop() {
@@ -278,7 +270,7 @@ function animationLoop() {
     if (isGameOver) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         for(let i=0; i<15; i++) {
-            ctx.fillStyle = i%2===0?'#FFD700':'#FFF';
+            ctx.fillStyle = i%2===0?'gold':'#FFF';
             ctx.beginPath();
             let x = (frameCount*5 + i*100)%canvas.width, y = (frameCount*3 + i*90)%canvas.height;
             ctx.arc(x, y, 3, 0, Math.PI*2); ctx.fill();
