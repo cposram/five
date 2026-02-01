@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>岡聯五子棋 - 就是要上榜</title>
+    <title>岡聯五子棋 - 扁平旗艦版</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
@@ -31,7 +31,7 @@
         
         /* 🚀 核心修改：上排人名、下排步數的橫向列表 */
         .rank-list-flex { 
-            display: flex; justify-content: space-around; gap: 2px; 
+            display: flex; justify-content: space-around; gap: 2px; min-height: 25px;
         }
 
         .rank-unit { 
@@ -46,7 +46,7 @@
         /* 大師級專用：Top 6 兩排橫向 */
         .master-grid-box { border-color: var(--red) !important; }
         .master-grid-box b { color: var(--red); }
-        .master-flex { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+        .master-flex { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; min-height: 50px; }
 
         /* 調整遊戲區域，防止擋到棋盤 */
         #setup-menu { margin-top: 155px; text-align: center; background: white; padding: 25px; border-radius: 20px; width: 85%; max-width: 300px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); z-index: 100; }
@@ -106,7 +106,7 @@
 </div>
 
 <script>
-// --- [1] Firebase 配置 ---
+// --- [1] Firebase 配置 (請保持 API Key 不變) ---
 const firebaseConfig = {
   apiKey: "AIzaSyBQr_3o913vgaWUg4PAuequLEVE1mZFS7M",
   databaseURL: "https://cowgame-48dd8-default-rtdb.firebaseio.com",
@@ -118,14 +118,15 @@ const db = firebase.database();
 const paths = { easy: 'rank_v4_easy', medium: 'rank_v4_medium', hard: 'rank_v4_hard' };
 const topScores = { easy: [], medium: [], hard: [] };
 
-// --- [2] 扁平化監聽邏輯 ---
+// --- [2] 修正版監聽邏輯 (增加 snap.exists 判斷，避免卡死) ---
 function listenRank(lv) {
     const limit = (lv === 'hard') ? 6 : 3;
     db.ref(paths[lv]).orderByChild('steps').limitToFirst(limit).on('value', snap => {
         const listEl = document.getElementById(`rank-${lv}`);
         topScores[lv] = [];
         let html = "";
-        if (snap.exists()) {
+        
+        if (snap.exists() && snap.val() !== null) {
             snap.forEach(c => {
                 const d = c.val();
                 topScores[lv].push(d);
@@ -135,11 +136,14 @@ function listenRank(lv) {
         } else {
             listEl.innerHTML = "<span style='color:#777; font-size:9px;'>等待紀錄...</span>";
         }
+    }, (error) => {
+        console.error("Firebase Error:", error);
+        document.getElementById(`rank-${lv}`).innerHTML = "<span style='color:red; font-size:9px;'>連線錯誤</span>";
     });
 }
 ['easy', 'medium', 'hard'].forEach(listenRank);
 
-// --- [3] 遊戲核心 ---
+// --- [3] 遊戲核心邏輯 ---
 let board = [], steps = 0, isGameOver = false, difficulty = 'easy', frameCount = 0;
 const canvas = document.getElementById('victoryCanvas'), ctx = canvas.getContext('2d');
 const diffLabels = { easy: '初級', medium: '中級', hard: '大師級' };
@@ -254,7 +258,7 @@ function endGame(win) {
         } else {
             alert(`勝利！用了 ${steps} 步。可惜未擠進前 ${limit} 名！`);
         }
-    } else alert("NPC 獲勝！喝口 LØV 茶再戰！");
+    } else alert("NPC 獲勝！多吃點小番茄補充營養，下次再來。");
 }
 
 function animationLoop() {
@@ -262,7 +266,7 @@ function animationLoop() {
     if (isGameOver) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         for(let i=0; i<15; i++) {
-            ctx.fillStyle = i%2===0?var(--gold):'#FFF';
+            ctx.fillStyle = i%2===0?'gold':'#FFF';
             ctx.beginPath();
             let x = (frameCount*5 + i*100)%canvas.width, y = (frameCount*3 + i*90)%canvas.height;
             ctx.arc(x, y, 3, 0, Math.PI*2); ctx.fill();
