@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>岡聯五子棋 - 強化 AI 版</title>
+    <title>岡聯五子棋 - 最強NPC</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
@@ -47,25 +47,27 @@
 // ⚙️ [AI 智力與核心參數調整區]
 // =========================================================================
 const CONFIG = {
-    // 1. 防禦倍率：數字越大 AI 越怕你贏。建議 2.0 ~ 2.5
-    // 如果你覺得它只會堵人、不自己進攻，就把這個調低（如 1.5）
-    defenseMultiplier: 2.2,
-
-    // 2. 權重分數：AI 對不同棋型的重視程度
-    weights: {
-        five: 1000000,      // 連成五顆 (勝)
-        liveFour: 100000,   // 活四 (必勝態)
-        jumpFour: 80000,    // 跳四 (例如 O_OOO，中間有空格但下一手就贏)
-        deadFour: 10000,    // 死四 (只有一頭通)
-        liveThree: 8000,    // 活三
-        jumpThree: 5000,    // 跳三 (例如 O_OO)
-        deadThree: 1500,    // 死三
-        liveTwo: 400,       // 活二
-        centerBonus: 1.5,   // 靠近中心位置的加分倍率 (讓 AI 棋局好看一點)
-        comboBonus: 2.5     // 多重威脅加成：如果一點能成兩條線（如雙三），分數翻 N 倍
+    // 防禦倍率：數字越大 AI 越愛堵你
+    defenseMultipliers: {
+        easy: 1.2,    // 原中級
+        medium: 2.2,  // 原大師
+        hard: 3.8     // 巔峰版：強烈防禦意識
     },
 
-    // 3. Firebase 設定
+    // 權重分數
+    weights: {
+        five: 1000000,      // 連成五顆
+        liveFour: 100000,   // 活四
+        jumpFour: 80000,    // 跳四
+        deadFour: 10000,    // 死四
+        liveThree: 8000,    // 活三
+        jumpThree: 5000,    // 跳三
+        deadThree: 1500,    // 死三
+        liveTwo: 400,       // 活二
+        centerBonus: 1.8,   // 中心控制加分
+        comboBonus: 4.5     // 多重威脅加成
+    },
+
     firebase: {
         apiKey: "AIzaSyBQr_3o913vgaWUg4PAuequLEVE1mZFS7M",
         databaseURL: "https://cowgame-48dd8-default-rtdb.firebaseio.com",
@@ -73,7 +75,6 @@ const CONFIG = {
     }
 };
 
-// --- 初始化 Firebase ---
 firebase.initializeApp(CONFIG.firebase);
 const db = firebase.database();
 const paths = { easy: 'rank_v4_easy', medium: 'rank_v4_medium', hard: 'rank_v4_hard' };
@@ -86,15 +87,16 @@ const topScores = { easy: [], medium: [], hard: [] };
         <div class="rank-box"><b>中級 Top 3</b><div id="rank-medium" class="rank-list-flex">載入中...</div></div>
     </div>
     <div class="row-two">
-        <div class="rank-box master-grid-box"><b>🔥 大師殿堂 Top 6 (強化模式)</b><div id="rank-hard" class="master-grid-list">載入中...</div></div>
+        <div class="rank-box master-grid-box"><b>🔥 巔峰殿堂 Top 6 (最強 AI)</b><div id="rank-hard" class="master-grid-list">載入中...</div></div>
     </div>
 </div>
 
 <div id="setup-menu">
     <h1 style="color:var(--coffee); margin:0; font-size: 24px;">岡聯五子棋</h1>
-    <button class="btn" onclick="startGomoku('easy')">初級 (隨機)</button>
-    <button class="btn" onclick="startGomoku('medium')">中級 (貪婪)</button>
-    <button class="btn" onclick="startGomoku('hard')" style="background:var(--red); box-shadow:0 4px 0 #8e2020">AI 大師對戰 (型樣)</button>
+    <p style="font-size:12px; color:#666; margin-bottom:10px;">難度已全面進化遞補</p>
+    <button class="btn" onclick="startGomoku('easy')">初級 (基礎 AI)</button>
+    <button class="btn" onclick="startGomoku('medium')">中級 (進階型樣)</button>
+    <button class="btn" onclick="startGomoku('hard')" style="background:var(--red); box-shadow:0 4px 0 #8e2020">🔥 巔峰大師 (極致防禦)</button>
 </div>
 
 <div id="game-container">
@@ -123,10 +125,10 @@ function listenRank(lv) {
 }
 ['easy', 'medium', 'hard'].forEach(listenRank);
 
-// --- [2] 遊戲流程 ---
+// --- [2] 遊戲核心 ---
 let board = [], steps = 0, isGameOver = false, difficulty = 'easy', frameCount = 0;
 const canvas = document.getElementById('victoryCanvas'), ctx = canvas.getContext('2d');
-const diffLabels = { easy: '初級', medium: '中級', hard: 'AI 大師' };
+const diffLabels = { easy: '初級', medium: '中級', hard: '巔峰大師' };
 
 function startGomoku(lv) {
     difficulty = lv;
@@ -172,14 +174,18 @@ function placePiece(r, c, p) {
     document.getElementsByClassName('cell')[r * 15 + c].appendChild(div);
 }
 
-// --- [3] 強化版 AI 思考引擎 ---
+// --- [3] 進化版 AI 引擎 ---
 function findBestMove() {
-    let best = {r: 7, c: 7, s: -1};
+    let best = {r: 7, c: 7, s: -Infinity};
     let candidates = [];
+    
+    // 如果是巔峰模式且開局，搶佔天元
+    if (difficulty === 'hard' && board[7][7] === 0) return {r: 7, c: 7};
+
     for(let r=0; r<15; r++) {
         for(let c=0; c<15; c++) {
             if (board[r][c] === 0) {
-                let s = (difficulty === 'easy') ? Math.random() : evalPos(r, c);
+                let s = evalPos(r, c);
                 if (s > best.s) { best = {r, c, s}; candidates = [{r, c}]; }
                 else if (s === best.s) { candidates.push({r, c}); }
             }
@@ -189,27 +195,32 @@ function findBestMove() {
 }
 
 function evalPos(r, c) {
-    // 分別計算玩家(1)與AI(2)在該點的得分
-    let pScore = getAdvancedScore(r, c, 1); // 玩家如果下這，威脅多大
-    let nScore = getAdvancedScore(r, c, 2); // AI 如果下這，優勢多大
+    let pScore = getAdvancedScore(r, c, 1); 
+    let nScore = getAdvancedScore(r, c, 2); 
+    let centerScore = (7 - Math.abs(r - 7)) + (7 - Math.abs(c - 7));
     
     if (difficulty === 'hard') {
-        let centerScore = (7 - Math.abs(r - 7)) + (7 - Math.abs(c - 7)) * CONFIG.weights.centerBonus;
-        // 公式：(防守權重) + 進攻權重 + 位置分
-        return (pScore * CONFIG.defenseMultiplier) + nScore + centerScore;
+        // 巔峰模式：防禦優先，且具備殺招判斷
+        if (nScore >= CONFIG.weights.five) return nScore * 10; // 自己能贏必下
+        if (pScore >= CONFIG.weights.five) return pScore * 8;  // 玩家能贏必堵
+        return (pScore * CONFIG.defenseMultipliers.hard) + nScore + (centerScore * CONFIG.weights.centerBonus);
+    } 
+    else if (difficulty === 'medium') {
+        return (pScore * CONFIG.defenseMultipliers.medium) + nScore + centerScore;
     }
-    return pScore + nScore; // 中級版不加權、不考慮位置
+    // 初級：單純分數累加
+    return (pScore * CONFIG.defenseMultipliers.easy) + nScore;
 }
 
 function getAdvancedScore(r, c, p) {
     let totalScore = 0;
     let threats = 0; 
+    let killerMove = false;
     const dirs = [[1,0],[0,1],[1,1],[1,-1]];
     const W = CONFIG.weights;
 
     for (let [dr, dc] of dirs) {
         let lineStr = ""; 
-        // 抓取該方向前後 4 格轉成字串識別 (0:空, 1:同色, X:障礙)
         for (let i = -4; i <= 4; i++) {
             if (i === 0) { lineStr += "P"; continue; }
             let rr = r + dr * i, cc = c + dc * i;
@@ -221,20 +232,25 @@ function getAdvancedScore(r, c, p) {
         }
 
         let s = 0;
-        // 型樣匹配規則 (Regex)
+        // 型樣匹配 (Regex)
         if (/1111P|111P1|11P11|1P111|P1111/.test(lineStr)) s = W.five;
         else if (/0111P0|011P10|01P110|0P1110/.test(lineStr)) s = W.liveFour;
+        else if (/X111P0|0P111X|X11P10|01P11X/.test(lineStr)) s = W.deadFour;
         else if (/111P0|11P10|1P110|0P111|01P11|011P1/.test(lineStr)) s = W.jumpFour;
-        else if (/011P0|01P10|0P110|01P010|010P10/.test(lineStr)) s = W.liveThree;
+        else if (/011P0|01P10|0P110/.test(lineStr)) s = W.liveThree;
+        else if (/01P010|010P10/.test(lineStr)) s = W.jumpThree;
         else if (/01P0|0P10/.test(lineStr)) s = W.liveTwo;
 
         if (s > 0) {
             totalScore += s;
-            if (s >= W.liveThree) threats++; 
+            if (s >= W.liveThree) threats++;
+            if (s >= W.liveFour) killerMove = true;
         }
     }
-    // Combo 判定：如果能同時產生兩個以上的活三或四，分數暴增
-    if (threats >= 2) totalScore *= CONFIG.weights.comboBonus;
+    // 巔峰模式專用 Combo 加成
+    if (difficulty === 'hard' && (threats >= 2 || (threats >= 1 && killerMove))) {
+        totalScore *= CONFIG.weights.comboBonus;
+    }
     return totalScore;
 }
 
@@ -261,7 +277,7 @@ function endGame(win) {
                 db.ref(paths[difficulty]).push({ name, steps, time: Date.now() });
             }, 600);
         } else alert(`勝利！用了 ${steps} 步。`);
-    } else alert("NPC 獲勝！這手棋值得配一杯岡聯鮮乳思考。");
+    } else alert("巔峰 AI 獲勝！這手棋值得配一杯岡聯鮮乳思考。");
 }
 
 function animationLoop() {
