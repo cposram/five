@@ -7,9 +7,15 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        :root { --coffee: #6f4e37; --wood: #e3c16f; --grass: #87CEEB; --gold: #FFD700; --red: #ff4444; }
-        body { margin: 0; background: var(--grass); font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; display: flex; flex-direction: column; align-items: center; touch-action: none; }
+        :root { --coffee: #6f4e37; --wood: #e3c16f; --grass: #87CEEB; --gold: #FFD700; --red: #ff4444; --dark-overlay: rgba(0,0,0,0.85); }
+        /* 加入 transition 讓變色過程有動畫感 */
+        body { margin: 0; background: var(--grass); font-family: "Microsoft JhengHei", sans-serif; overflow: hidden; display: flex; flex-direction: column; align-items: center; touch-action: none; transition: filter 1.5s ease; }
         
+        /* 🔥 極度悲慘模式：高對比灰階濾鏡 */
+        body.miserable-mode {
+            filter: grayscale(95%) contrast(150%) brightness(80%);
+        }
+
         /* 🏆 排行榜區塊 */
         #leaderboard-zone { position: absolute; top: 5px; left: 5px; right: 5px; display: flex; flex-direction: column; gap: 4px; z-index: 110; }
         .row-one { display: flex; gap: 4px; }
@@ -38,43 +44,55 @@
         .btn { background: var(--coffee); color: white; border: none; padding: 12px; margin: 8px; border-radius: 50px; font-weight: bold; cursor: pointer; font-size: 18px; box-shadow: 0 4px 0 #4e3626; width: 100%; }
         .stats { font-size: 13px; color: white; text-shadow: 1px 1px 3px #000; margin-bottom: 5px; font-weight: bold; }
         @keyframes drop { from { transform: scale(3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        /* 🆕 新增：自定義結算模態視窗 */
+        #result-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; justify-content: center; align-items: center;
+            z-index: 200; background: rgba(0,0,0,0.6);
+            opacity: 0; transition: opacity 0.5s ease;
+        }
+        #result-modal.show { display: flex; opacity: 1; }
+        .result-content {
+            background: white; padding: 30px; border-radius: 16px; text-align: center;
+            width: 80%; max-width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transform: scale(0.8); transition: transform 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+        #result-modal.show .result-content { transform: scale(1); }
+        .result-content h2 { margin: 0 0 10px 0; font-size: 28px; }
+        .result-content p { font-size: 16px; color: #555; margin-bottom: 25px; }
+
+        /* 勝利主題 */
+        .win-theme .result-content { border: 4px solid var(--gold); }
+        .win-theme h2 { color: #d4af37; }
+        
+        /* 失敗主題 (悲慘) */
+        .lose-theme { background: rgba(0,0,0,0.9) !important; }
+        .lose-theme .result-content { background: #2a2a2a; border: 4px solid #555; color: #ccc; }
+        .lose-theme h2 { color: var(--red); }
+        .lose-theme p { color: #999; }
+        .lose-theme .btn { background: #444; box-shadow: 0 4px 0 #222; }
     </style>
 </head>
 <body>
 
 <script>
 // =========================================================================
-// ⚙️ [AI 智力與核心參數調整區]
+// ⚙️ [AI 智力與核心參數]
 // =========================================================================
 const CONFIG = {
-    // 防禦倍率：數字越大 AI 越愛堵你
-    defenseMultipliers: {
-        easy: 1.2,    // 原中級
-        medium: 2.2,  // 原大師
-        hard: 3.8     // 巔峰版：強烈防禦意識
-    },
-
-    // 權重分數
+    defenseMultipliers: { easy: 1.2, medium: 2.2, hard: 3.8 },
     weights: {
-        five: 1000000,      // 連成五顆
-        liveFour: 100000,   // 活四
-        jumpFour: 80000,    // 跳四
-        deadFour: 10000,    // 死四
-        liveThree: 8000,    // 活三
-        jumpThree: 5000,    // 跳三
-        deadThree: 1500,    // 死三
-        liveTwo: 400,       // 活二
-        centerBonus: 1.8,   // 中心控制加分
-        comboBonus: 4.5     // 多重威脅加成
+        five: 1000000, liveFour: 100000, jumpFour: 80000, deadFour: 10000,
+        liveThree: 8000, jumpThree: 5000, deadThree: 1500, liveTwo: 400,
+        centerBonus: 1.8, comboBonus: 4.5
     },
-
     firebase: {
         apiKey: "AIzaSyBQr_3o913vgaWUg4PAuequLEVE1mZFS7M",
         databaseURL: "https://cowgame-48dd8-default-rtdb.firebaseio.com",
         projectId: "cowgame-48dd8"
     }
 };
-
 firebase.initializeApp(CONFIG.firebase);
 const db = firebase.database();
 const paths = { easy: 'rank_v4_easy', medium: 'rank_v4_medium', hard: 'rank_v4_hard' };
@@ -103,7 +121,15 @@ const topScores = { easy: [], medium: [], hard: [] };
     <div class="stats"><span id="display-lv"></span> | 步數: <span id="step-count">0</span></div>
     <div id="board"></div>
     <canvas id="victoryCanvas"></canvas>
-    <button class="btn" onclick="location.reload()" style="background:#666; box-shadow:0 4px 0 #444; margin-top:10px; width:100px; font-size:12px; padding:8px;">回選單</button>
+    <button class="btn" onclick="location.reload()" style="background:#666; box-shadow:0 4px 0 #444; margin-top:10px; width:100px; font-size:12px; padding:8px;">放棄回選單</button>
+</div>
+
+<div id="result-modal">
+    <div class="result-content">
+        <h2 id="result-title"></h2>
+        <p id="result-msg"></p>
+        <button class="btn" onclick="location.reload()">再挑戰一局</button>
+    </div>
 </div>
 
 <script>
@@ -174,14 +200,11 @@ function placePiece(r, c, p) {
     document.getElementsByClassName('cell')[r * 15 + c].appendChild(div);
 }
 
-// --- [3] 進化版 AI 引擎 ---
+// --- [3] AI 引擎 (維持不變) ---
 function findBestMove() {
     let best = {r: 7, c: 7, s: -Infinity};
     let candidates = [];
-    
-    // 如果是巔峰模式且開局，搶佔天元
     if (difficulty === 'hard' && board[7][7] === 0) return {r: 7, c: 7};
-
     for(let r=0; r<15; r++) {
         for(let c=0; c<15; c++) {
             if (board[r][c] === 0) {
@@ -198,27 +221,19 @@ function evalPos(r, c) {
     let pScore = getAdvancedScore(r, c, 1); 
     let nScore = getAdvancedScore(r, c, 2); 
     let centerScore = (7 - Math.abs(r - 7)) + (7 - Math.abs(c - 7));
-    
     if (difficulty === 'hard') {
-        // 巔峰模式：防禦優先，且具備殺招判斷
-        if (nScore >= CONFIG.weights.five) return nScore * 10; // 自己能贏必下
-        if (pScore >= CONFIG.weights.five) return pScore * 8;  // 玩家能贏必堵
+        if (nScore >= CONFIG.weights.five) return nScore * 10;
+        if (pScore >= CONFIG.weights.five) return pScore * 8;
         return (pScore * CONFIG.defenseMultipliers.hard) + nScore + (centerScore * CONFIG.weights.centerBonus);
-    } 
-    else if (difficulty === 'medium') {
+    } else if (difficulty === 'medium') {
         return (pScore * CONFIG.defenseMultipliers.medium) + nScore + centerScore;
     }
-    // 初級：單純分數累加
     return (pScore * CONFIG.defenseMultipliers.easy) + nScore;
 }
 
 function getAdvancedScore(r, c, p) {
-    let totalScore = 0;
-    let threats = 0; 
-    let killerMove = false;
-    const dirs = [[1,0],[0,1],[1,1],[1,-1]];
-    const W = CONFIG.weights;
-
+    let totalScore = 0; let threats = 0; let killerMove = false;
+    const dirs = [[1,0],[0,1],[1,1],[1,-1]]; const W = CONFIG.weights;
     for (let [dr, dc] of dirs) {
         let lineStr = ""; 
         for (let i = -4; i <= 4; i++) {
@@ -230,9 +245,7 @@ function getAdvancedScore(r, c, p) {
             else if (val === p) lineStr += "1";
             else lineStr += "X";
         }
-
         let s = 0;
-        // 型樣匹配 (Regex)
         if (/1111P|111P1|11P11|1P111|P1111/.test(lineStr)) s = W.five;
         else if (/0111P0|011P10|01P110|0P1110/.test(lineStr)) s = W.liveFour;
         else if (/X111P0|0P111X|X11P10|01P11X/.test(lineStr)) s = W.deadFour;
@@ -240,17 +253,9 @@ function getAdvancedScore(r, c, p) {
         else if (/011P0|01P10|0P110/.test(lineStr)) s = W.liveThree;
         else if (/01P010|010P10/.test(lineStr)) s = W.jumpThree;
         else if (/01P0|0P10/.test(lineStr)) s = W.liveTwo;
-
-        if (s > 0) {
-            totalScore += s;
-            if (s >= W.liveThree) threats++;
-            if (s >= W.liveFour) killerMove = true;
-        }
+        if (s > 0) { totalScore += s; if (s >= W.liveThree) threats++; if (s >= W.liveFour) killerMove = true; }
     }
-    // 巔峰模式專用 Combo 加成
-    if (difficulty === 'hard' && (threats >= 2 || (threats >= 1 && killerMove))) {
-        totalScore *= CONFIG.weights.comboBonus;
-    }
+    if (difficulty === 'hard' && (threats >= 2 || (threats >= 1 && killerMove))) totalScore *= CONFIG.weights.comboBonus;
     return totalScore;
 }
 
@@ -265,30 +270,64 @@ function checkWin(r, c, p) {
     return false;
 }
 
+// --- [4] 🆕 全新結算處理 (視覺優化) ---
 function endGame(win) {
     isGameOver = true;
+    const modal = document.getElementById('result-modal');
+    const title = document.getElementById('result-title');
+    const msg = document.getElementById('result-msg');
+
+    // 移除舊的主題 class
+    modal.classList.remove('win-theme', 'lose-theme');
+
     if (win) {
+        // 🎉 玩家勝利：金色輝煌主題
+        modal.classList.add('win-theme');
+        title.innerHTML = "🏆 恭喜獲勝！";
+        msg.innerHTML = `在 [${diffLabels[difficulty]}] 難度下，你僅用了 <b>${steps}</b> 步就擊敗了 AI。`;
+        
+        // 檢查破紀錄 (維持原有邏輯)
         const limit = (difficulty === 'hard') ? 6 : 3;
         const myList = topScores[difficulty];
         const isTop = myList.length < limit || steps < myList[myList.length - 1].steps;
         if (isTop) {
             setTimeout(() => {
-                const name = prompt(`🏆 破紀錄！[${diffLabels[difficulty]}] 僅用 ${steps} 步！\n請留名：`) || "高手";
+                const name = prompt(`🎉 新紀錄！請輸入你的大名以登錄排行榜：`) || "神祕高手";
                 db.ref(paths[difficulty]).push({ name, steps, time: Date.now() });
-            }, 600);
-        } else alert(`勝利！用了 ${steps} 步。`);
-    } else alert("巔峰 AI 獲勝！這手棋值得配一杯岡聯鮮乳思考。");
+            }, 800);
+        }
+    } else {
+        // 💀 NPC 勝利：極度悲慘模式
+        // 對 body 添加悲慘濾鏡 class
+        document.body.classList.add('miserable-mode');
+        
+        modal.classList.add('lose-theme');
+        title.innerHTML = "💀 你輸了...";
+        msg.innerHTML = `勝敗乃兵家常事，但這次你被 AI 無情地碾壓了。<br>要再來一局雪恥嗎？`;
+    }
+    
+    // 顯示模態視窗 (延遲一點點讓濾鏡先跑)
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 100);
 }
 
+// --- [5] 動畫迴圈 (維持不變，但會受濾鏡影響) ---
 function animationLoop() {
     frameCount++;
     if (isGameOver) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        for(let i=0; i<20; i++) {
-            ctx.fillStyle = i%2===0?'gold':'white';
+        for(let i=0; i<30; i++) { // 增加一點泡泡數量
+            // 這裡不需要改顏色，因為 body 的 grayscale 濾鏡會自動把金色變成死灰色
+            ctx.fillStyle = i%2===0 ? 'gold' : 'rgba(255,255,255,0.8)';
             ctx.beginPath();
-            let x = (frameCount*5 + i*80)%canvas.width, y = (frameCount*2 + i*70)%canvas.height;
-            ctx.arc(x, y, 2, 0, Math.PI*2); ctx.fill();
+            // 讓泡泡飄慢一點，增加沉重感
+            let speed = isGameOver && document.body.classList.contains('miserable-mode') ? 0.5 : 2;
+            let x = (frameCount*speed + i*80)%canvas.width;
+            let y = canvas.height - (frameCount*(speed*0.8) + i*70)%canvas.height; 
+            // 隨機大小
+            let radius = (Math.sin(i)*5 + 5); 
+            ctx.arc(x, y, radius, 0, Math.PI*2); ctx.fill();
         }
     }
     requestAnimationFrame(animationLoop);
